@@ -101,14 +101,14 @@ Les mots d'un texte sont donc transformés en nombre basé sur leur importance d
 
 Pour ce faire on va calculer *TF* qui correspond au *Term Frequency*. Ce calcul s'effectue en divisant le nombre de fois qu'un mot apparait dans le texte par le nombre total de mots dans le texte.
 
-<img>![alt text](image.png)</img>
+<img>![alt text](images/image.png)</img>
 
 L'*IDF* quant à lui correspond à *l'inverse document frequency*. L'IDF représente la proportion de documents qui contienne un mot. Ici les mots qui sont le moins présent (par exemple des mots techniques) vont avoir une plus grande importance que les mots communs. 
 
-<img>![alt text](image-1.png)</img>
+<img>![alt text](images/image-1.png)</img>
 
 Ensuite on va calculer le *TF-IDF* en multipliant ces deux valeurs.
 
-<img>![alt text](image-2.png)</img>
+<img>![alt text](images/image-2.png)</img>
 
 Plus simplement, l'importance d'un mot est plus importante lors qu'il est très présent dans un texte et moins dans les autres. Cela nous permet d'avoir un niveau d'importance global pour un mot dans plusieurs textes. 
