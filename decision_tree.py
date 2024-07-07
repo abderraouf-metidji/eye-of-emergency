@@ -11,7 +11,7 @@ class DecisionTree():
     """
 
     def __init__(self, max_depth=4, min_samples_leaf=1, 
-                 min_information_gain=0.0, numb_of_features_splitting=None,
+                 min_information_gain=0.0, num_of_features_splitting=None,
                  amount_of_say=None) -> None:
         """
         Setting the class with hyperparameters
@@ -26,11 +26,11 @@ class DecisionTree():
         self.max_depth = max_depth
         self.min_samples_leaf = min_samples_leaf
         self.min_information_gain = min_information_gain
-        self.numb_of_features_splitting = numb_of_features_splitting
+        self.num_of_features_splitting = num_of_features_splitting
         self.amount_of_say = amount_of_say
 
     def _entropy(self, class_probabilities: list) -> float:
-        return sum([-p * np.log2(p) for p in class_probabilities if p>0])
+        return sum([-p * np.log2(p) for p in class_probabilities if p > 0])
     
     def _class_probabilities(self, labels: list) -> list:
         total_count = len(labels)
@@ -45,23 +45,21 @@ class DecisionTree():
         return sum([self._data_entropy(subset) * (len(subset) / total_count) for subset in subsets])
     
     def _split(self, data: np.array, feature_idx: int, feature_val: float) -> tuple:
-        
         mask_below_threshold = data[:, feature_idx] < feature_val
         group1 = data[mask_below_threshold]
         group2 = data[~mask_below_threshold]
-
         return group1, group2
     
     def _select_features_to_use(self, data: np.array) -> list:
         """
-        Randomly selects the features to use while splitting w.r.t. hyperparameter numb_of_features_splitting
+        Randomly selects the features to use while splitting w.r.t. hyperparameter num_of_features_splitting
         """
-        feature_idx = list(range(data.shape[1]-1))
+        feature_idx = list(range(data.shape[1] - 1))
 
-        if self.numb_of_features_splitting == "sqrt":
-            feature_idx_to_use = np.random.choice(feature_idx, size=int(np.sqrt(len(feature_idx))))
-        elif self.numb_of_features_splitting == "log":
-            feature_idx_to_use = np.random.choice(feature_idx, size=int(np.log2(len(feature_idx))))
+        if self.num_of_features_splitting == "sqrt":
+            feature_idx_to_use = np.random.choice(feature_idx, size=int(np.sqrt(len(feature_idx))), replace=False)
+        elif self.num_of_features_splitting == "log":
+            feature_idx_to_use = np.random.choice(feature_idx, size=int(np.log2(len(feature_idx))), replace=False)
         else:
             feature_idx_to_use = feature_idx
 
@@ -72,13 +70,13 @@ class DecisionTree():
         Finds the best split (with the lowest entropy) given data
         Returns 2 splitted groups and split information
         """
-        min_part_entropy = 1e9
-        feature_idx_to_use =  self._select_features_to_use(data)
+        min_part_entropy = float('inf')
+        feature_idx_to_use = self._select_features_to_use(data)
 
         for idx in feature_idx_to_use:
             feature_vals = np.percentile(data[:, idx], q=np.arange(25, 100, 25))
             for feature_val in feature_vals:
-                g1, g2, = self._split(data, idx, feature_val)
+                g1, g2 = self._split(data, idx, feature_val)
                 part_entropy = self._partition_entropy([g1[:, -1], g2[:, -1]])
                 if part_entropy < min_part_entropy:
                     min_part_entropy = part_entropy
@@ -89,18 +87,12 @@ class DecisionTree():
         return g1_min, g2_min, min_entropy_feature_idx, min_entropy_feature_val, min_part_entropy
 
     def _find_label_probs(self, data: np.array) -> np.array:
-
-        labels_as_integers = data[:,-1].astype(int)
-        # Calculate the total number of labels
+        labels_as_integers = data[:, -1].astype(int)
         total_labels = len(labels_as_integers)
-        # Calculate the ratios (probabilities) for each label
         label_probabilities = np.zeros(len(self.labels_in_train), dtype=float)
 
-        # Populate the label_probabilities array based on the specific labels
         for i, label in enumerate(self.labels_in_train):
-            label_index = np.where(labels_as_integers == i)[0]
-            if len(label_index) > 0:
-                label_probabilities[i] = len(label_index) / total_labels
+            label_probabilities[i] = np.sum(labels_as_integers == label) / total_labels
 
         return label_probabilities
 
@@ -110,7 +102,7 @@ class DecisionTree():
         """
 
         # Check if the max depth has been reached (stopping criteria)
-        if current_depth > self.max_depth:
+        if current_depth >= self.max_depth:
             return None
         
         # Find best split
@@ -127,10 +119,10 @@ class DecisionTree():
         node = TreeNode(data, split_feature_idx, split_feature_val, label_probabilities, information_gain)
 
         # Check if the min_samples_leaf has been satisfied (stopping criteria)
-        if self.min_samples_leaf > split_1_data.shape[0] or self.min_samples_leaf > split_2_data.shape[0]:
+        if split_1_data.shape[0] < self.min_samples_leaf or split_2_data.shape[0] < self.min_samples_leaf:
             return node
         # Check if the min_information_gain has been satisfied (stopping criteria)
-        elif information_gain < self.min_information_gain:
+        if information_gain < self.min_information_gain:
             return node
 
         current_depth += 1
@@ -157,37 +149,25 @@ class DecisionTree():
         """
         Trains the model with given X and Y datasets
         """
-
-        # Concat features and labels
         self.labels_in_train = np.unique(Y_train)
         train_data = np.concatenate((X_train, np.reshape(Y_train, (-1, 1))), axis=1)
-
-        # Start creating the tree
         self.tree = self._create_tree(data=train_data, current_depth=0)
-
-        # Calculate feature importance
         self.feature_importances = dict.fromkeys(range(X_train.shape[1]), 0)
         self._calculate_feature_importance(self.tree)
-        # Normalize the feature importance values
-        self.feature_importances = {k: v / total for total in (sum(self.feature_importances.values()),) for k, v in self.feature_importances.items()}
+        total_importance = sum(self.feature_importances.values())
+        self.feature_importances = {k: v / total_importance for k, v in self.feature_importances.items()}
 
     def predict_proba(self, X_set: np.array) -> np.array:
         """Returns the predicted probs for a given data set"""
-
-        pred_probs = np.apply_along_axis(self._predict_one_sample, 1, X_set)
-        
-        return pred_probs
+        return np.apply_along_axis(self._predict_one_sample, 1, X_set)
 
     def predict(self, X_set: np.array) -> np.array:
         """Returns the predicted labels for a given data set"""
-
         pred_probs = self.predict_proba(X_set)
-        preds = np.argmax(pred_probs, axis=1)
-        
-        return preds    
+        return np.argmax(pred_probs, axis=1)
         
     def _print_recursive(self, node: TreeNode, level=0) -> None:
-        if node != None:
+        if node:
             self._print_recursive(node.left, level + 1)
             print('    ' * 4 * level + '-> ' + node.node_def())
             self._print_recursive(node.right, level + 1)
@@ -195,9 +175,9 @@ class DecisionTree():
     def print_tree(self) -> None:
         self._print_recursive(node=self.tree)
 
-    def _calculate_feature_importance(self, node):
+    def _calculate_feature_importance(self, node: TreeNode) -> None:
         """Calculates the feature importance by visiting each node in the tree recursively"""
-        if node != None:
-            self.feature_importances[node.feature_idx] += node.feature_importance
+        if node and node.feature_idx is not None:
+            self.feature_importances[node.feature_idx] += node.information_gain
             self._calculate_feature_importance(node.left)
-            self._calculate_feature_importance(node.right)         
+            self._calculate_feature_importance(node.right)
