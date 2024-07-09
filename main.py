@@ -93,8 +93,8 @@ class Node:
         self.value = value
 
 # Load the datasets
-train_data = pd.read_csv('train_tweets_processed.csv')
-test_data = pd.read_csv('test_tweets_processed.csv')
+train_data = pd.read_csv('train_tweets_cleaned.csv')
+test_data = pd.read_csv('test_tweets_cleaned.csv')
 
 # Identify feature columns
 text_column = 'text'
