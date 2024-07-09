@@ -1,4 +1,4 @@
-id,keyword,location,text,text_length,word_count,unique_words,hashtags,mentions,stopword_percentage,sentiment
+id,keyword,location,text,text_length,word_count,unique_words,hashtags,mentions,stopword_percentage,sentiment,target
 0,,,Just happened a terrible car crash,34,6,6,[],[],0.3333333333333333,-1.0
 2,,,"Heard about #earthquake is different cities, stay safe everyone.",64,9,9,['#earthquake'],[],0.2222222222222222,0.25
 3,,,"there is a forest fire at spot pond, geese are fleeing across the street, I cannot save them all",96,19,19,[],[],0.47368421052631576,0.0

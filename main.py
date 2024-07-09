@@ -1,7 +1,16 @@
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+
+class Node:
+    def __init__(self, feature_index=None, threshold=None, left=None, right=None, value=None):
+        self.feature_index = feature_index
+        self.threshold = threshold
+        self.left = left
+        self.right = right
+        self.value = value
 
 class DecisionTree:
     def __init__(self, min_samples_split=2, max_depth=float("inf")):
@@ -68,7 +77,7 @@ class DecisionTree:
         entropy = 0
         for cls in class_labels:
             p_cls = len(y[y == cls]) / len(y)
-            entropy += -p_cls * np.log2(p_cls)
+            entropy += -p_cls * np.log2(p_cls + 1e-10)  # Add a small epsilon to avoid log(0)
         return entropy
 
     def _calculate_leaf_value(self, y):
@@ -84,45 +93,31 @@ class DecisionTree:
         else:
             return self._predict(sample, tree.right)
 
-class Node:
-    def __init__(self, feature_index=None, threshold=None, left=None, right=None, value=None):
-        self.feature_index = feature_index
-        self.threshold = threshold
-        self.left = left
-        self.right = right
-        self.value = value
-
 # Load the datasets
 train_data = pd.read_csv('train_tweets_cleaned.csv')
 test_data = pd.read_csv('test_tweets_cleaned.csv')
 
-# Identify feature columns
-text_column = 'text'
-additional_feature_columns = ['text_length', 'word_count', 'unique_words', 'stopword_percentage', 'sentiment']
+# Handle missing values in 'processed_text' column
+train_data['processed_text'].fillna('', inplace=True)
+test_data['processed_text'].fillna('', inplace=True)
 
-# Convert text data to numeric features using TfidfVectorizer
+# Vectorize text data using TfidfVectorizer
 tfidf = TfidfVectorizer(max_features=1000)
-tfidf.fit(train_data[text_column])
+tfidf.fit(train_data['processed_text'])
 
-# Transform the text data to numeric features
-X_train_tfidf = tfidf.transform(train_data[text_column]).toarray()
-X_test_tfidf = tfidf.transform(test_data[text_column]).toarray()
+X_train_tfidf = tfidf.transform(train_data['processed_text']).toarray()
+X_test_tfidf = tfidf.transform(test_data['processed_text']).toarray()
 
-# Combine Tfidf features with additional features
-X_train = np.hstack((X_train_tfidf, train_data[additional_feature_columns].values))
-X_test = np.hstack((X_test_tfidf, test_data[additional_feature_columns].values))
+# Combine vectorized features with additional numerical features
+X_train = np.hstack((X_train_tfidf, train_data[['text_length', 'word_count', 'unique_words', 'stopword_percentage', 'sentiment']].values))
+X_test = np.hstack((X_test_tfidf, test_data[['text_length', 'word_count', 'unique_words', 'stopword_percentage', 'sentiment']].values))
 
 # Separate target variable
 y_train = train_data['target'].values
-
-# For test data, check if the target column exists and drop it if present
-if 'target' in test_data.columns:
-    y_test = test_data['target'].values
-else:
-    y_test = None
+y_test = test_data['target'].values
 
 # Train the decision tree
-tree = DecisionTree(min_samples_split=5, max_depth=10)  # Adjusted parameters
+tree = DecisionTree(min_samples_split=5, max_depth=10)
 tree.fit(X_train, y_train)
 
 # Make predictions on the test set
@@ -131,14 +126,6 @@ predictions = tree.predict(X_test)
 # Print the predictions
 print("Predictions:", predictions)
 
-# Add predictions to test data and save to a new CSV file
-test_data['target'] = predictions
-test_data.to_csv('predictions.csv', index=False)
-print("Predictions saved to predictions.csv")
-
-if y_test is not None:
-    # Calculate accuracy if the target column is available in the test set
-    accuracy = np.sum(predictions == y_test) / len(y_test)
-    print("Accuracy:", accuracy)
-else:
-    print("No target column in test data; accuracy cannot be calculated.")
+# Calculate accuracy
+accuracy = accuracy_score(y_test, predictions)
+print("Accuracy:", accuracy)
